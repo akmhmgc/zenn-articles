@@ -27,7 +27,7 @@ generate_commit_message.sh:
 #!/bin/bash
 
 # GPT-3 APIキーを環境変数に設定
-export OPENAI_API_KEY="your_api_key_here"
+export OPENAI_API_KEY="あなたのAPIキー"
 
 # git diffの出力をファイルに保存
 git diff --staged > diff_output.txt
@@ -78,6 +78,7 @@ Given the following git diff output, suggest an appropriate commit message in En
 
 の部分がプロンプトになっています。もっと良いメッセージがあるかもしれないのでお好みでどうぞ。
 また、今回は適当にtoken数を100としていますがもう少し増やした方が良いかもしれません。
+APIキーには、[OpenAIのAPI Key](https://platform.openai.com/account/api-keys)を使用してください。
 
 3. シェルスクリプトとPythonスクリプトを同じディレクトリに保存し、シェルスクリプトに実行権限を与えます。
 
