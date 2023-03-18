@@ -30,7 +30,7 @@ generate_commit_message.sh:
 export OPENAI_API_KEY="あなたのAPIキー"
 
 # git diffの出力をPythonスクリプトに渡す
-git diff | python3 generate_commit_message.py
+git diff --staged | python3 generate_commit_message.py
 ```
 
 generate_commit_message.py:
