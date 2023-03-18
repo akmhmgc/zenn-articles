@@ -71,7 +71,12 @@ commit_message = response.choices[0].text.strip()
 print(commit_message)
 ```
 
-`Given the following git diff output, suggest an appropriate commit message in English:\n\n{diff_output}\n\nCommit message:`の部分がプロンプトになっています。もっと良いメッセージがあるかもしれないのでお好みでどうぞ。
+```
+Given the following git diff output, suggest an appropriate commit message in English:\n\n{diff_output}\n\nCommit message:
+```
+
+の部分がプロンプトになっています。もっと良いメッセージがあるかもしれないのでお好みでどうぞ。
+また、今回は適当にtoken数を100としていますがもう少し増やした方が良いかもしれません。
 
 3. シェルスクリプトとPythonスクリプトを同じディレクトリに保存し、シェルスクリプトに実行権限を与えます。
 
