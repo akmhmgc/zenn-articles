@@ -29,14 +29,8 @@ generate_commit_message.sh:
 # GPT-3 APIキーを環境変数に設定
 export OPENAI_API_KEY="あなたのAPIキー"
 
-# git diffの出力をファイルに保存
-git diff --staged > diff_output.txt
-
-# Pythonスクリプトを実行してコミットメッセージを生成
-python3 generate_commit_message.py
-
-# 一時ファイルを削除
-rm diff_output.txt
+# git diffの出力をPythonスクリプトに渡す
+git diff | python3 generate_commit_message.py
 ```
 
 generate_commit_message.py:
@@ -44,7 +38,7 @@ generate_commit_message.py:
 ```generate_commit_message.py
 import openai
 import os
-import json
+import sys
 
 # 環境変数からAPIキーを取得
 api_key = os.getenv("OPENAI_API_KEY")
@@ -52,9 +46,8 @@ api_key = os.getenv("OPENAI_API_KEY")
 # APIキーを設定
 openai.api_key = api_key
 
-# git diffの出力を読み込む
-with open("diff_output.txt", "r") as file:
-    diff_output = file.read()
+# 標準入力からgit diffの出力を取得
+diff_output = sys.stdin.read()
 
 # GPT-3へのリクエストを作成
 prompt = f"Given the following git diff output, suggest an appropriate commit message in English:\n\n{diff_output}\n\nCommit message:"
