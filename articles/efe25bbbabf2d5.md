@@ -1,5 +1,5 @@
 ---
-title: "駆動表でWHERE句がなくてもExtraカラムに`Using where`が出る理由"
+title: "駆動表でWHERE句がなくてもExtraカラムにUsing whereが出る理由"
 emoji: "🦤"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["MySQL"]
