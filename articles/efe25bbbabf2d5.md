@@ -63,7 +63,7 @@ select * from t1 inner join t2 on t1.c2 = t2.c1
 ```
 
 ## 実行計画
-駆動表の結合キーにNULL制約が存在しない場合は、駆動表のExtraカラムに`Using where`が表示されています
+駆動表の結合キーにNULL制約が存在しない場合は、駆動表のExtraカラムに`Using where`が表示されています。
 
 ### 駆動表の結合キーにNULL制約が存在する場合
 
@@ -409,3 +409,27 @@ select * from information_schema.OPTIMIZER_TRACE\g;
 これで実行計画のExtraカラムに`Using where`が追加されている理由がわかりました。
 
 [^1]:https://dev.mysql.com/doc/refman/8.0/ja/working-with-null.html
+
+## 補足
+当然ですが、比較した`t1.c1`を駆動表の結合キーにした内部結合のクエリのオプティマイザトレースをみると、`attaching_conditions_to_tables`を見ると条件は追加されていないことがわかります。
+これは`t1.c1`にはすでに`NOT NULL`制約がついているため追加する必要がないからだと考えられます。
+
+```json
+          {
+            "attaching_conditions_to_tables": {
+              "original_condition": "(`t2`.`c1` = `t1`.`c1`)",
+              "attached_conditions_computation": [
+              ],
+              "attached_conditions_summary": [
+                {
+                  "table": "`t1`",
+                  "attached": null
+                },
+                {
+                  "table": "`t2`",
+                  "attached": "(`t2`.`c1` = `t1`.`c1`)"
+                }
+              ]
+            }
+          },
+```
