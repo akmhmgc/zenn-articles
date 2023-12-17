@@ -63,11 +63,12 @@ select * from t1 inner join t2 on t1.c2 = t2.c1
 ```
 
 ## 実行計画
+駆動表の結合キーにNULL制約が存在しない場合は、駆動表のExtraカラムに`Using where`が表示されています
 
 ### 駆動表の結合キーにNULL制約が存在する場合
 
 ```
-mysql> EXPLAIN select * from t1 inner join t2 on t1.c1 = t2.c1\G;
+mysql> EXPLAIN select * from t1 inner join t2 on t1.c1 = t2.c1\g;
 *************************** 1. row ***************************
            id: 1
   select_type: SIMPLE
@@ -99,7 +100,7 @@ possible_keys: c1
 
 ### 駆動表の結合キーにNULL制約が存在しない場合
 ```
-mysql> EXPLAIN select * from t1 inner join t2 on t1.c2 = t2.c1\G;
+mysql> EXPLAIN select * from t1 inner join t2 on t1.c2 = t2.c1\g;
 *************************** 1. row ***************************
            id: 1
   select_type: SIMPLE
@@ -129,5 +130,254 @@ possible_keys: c1
 2 rows in set, 1 warning (0.02 sec)
 ```
 
-実行計画を確認すると`t1`が駆動表になっています。
-また、Extraカラムを確認すると`Using Where`が
+## オプティマイザトレースで確認する
+駆動表に対してWHERE句を書いていないのに`Using where`が出ているのはなぜでしょうか。オプティマイザトレースを確認します。
+
+```sql
+SET optimizer_trace=`enabled=on`;
+
+EXPLAIN select * from t1 inner join t2 on t1.c2 = t2.c1\g;
+
+select * from information_schema.OPTIMIZER_TRACE\g;
+```
+
+```json
+{
+  "steps": [
+    {
+      "join_preparation": {
+        "select#": 1,
+        "steps": [
+          {
+            "expanded_query": "/* select#1 */ select `t1`.`c1` AS `c1`,`t1`.`c2` AS `c2`,`t2`.`c1` AS `c1`,`t2`.`c2` AS `c2` from (`t1` join `t2` on((`t1`.`c2` = `t2`.`c1`)))"
+          },
+          {
+            "transformations_to_nested_joins": {
+              "transformations": [
+                "JOIN_condition_to_WHERE",
+                "parenthesis_removal"
+              ],
+              "expanded_query": "/* select#1 */ select `t1`.`c1` AS `c1`,`t1`.`c2` AS `c2`,`t2`.`c1` AS `c1`,`t2`.`c2` AS `c2` from `t1` join `t2` where (`t1`.`c2` = `t2`.`c1`)"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "join_optimization": {
+        "select#": 1,
+        "steps": [
+          {
+            "condition_processing": {
+              "condition": "WHERE",
+              "original_condition": "(`t1`.`c2` = `t2`.`c1`)",
+              "steps": [
+                {
+                  "transformation": "equality_propagation",
+                  "resulting_condition": "multiple equal(`t1`.`c2`, `t2`.`c1`)"
+                },
+                {
+                  "transformation": "constant_propagation",
+                  "resulting_condition": "multiple equal(`t1`.`c2`, `t2`.`c1`)"
+                },
+                {
+                  "transformation": "trivial_condition_removal",
+                  "resulting_condition": "multiple equal(`t1`.`c2`, `t2`.`c1`)"
+                }
+              ]
+            }
+          },
+          {
+            "substitute_generated_columns": {
+            }
+          },
+          {
+            "table_dependencies": [
+              {
+                "table": "`t1`",
+                "row_may_be_null": false,
+                "map_bit": 0,
+                "depends_on_map_bits": [
+                ]
+              },
+              {
+                "table": "`t2`",
+                "row_may_be_null": false,
+                "map_bit": 1,
+                "depends_on_map_bits": [
+                ]
+              }
+            ]
+          },
+          {
+            "ref_optimizer_key_uses": [
+              {
+                "table": "`t2`",
+                "field": "c1",
+                "equals": "`t1`.`c2`",
+                "null_rejecting": true
+              }
+            ]
+          },
+          {
+            "rows_estimation": [
+              {
+                "table": "`t1`",
+                "table_scan": {
+                  "rows": 5,
+                  "cost": 0.25
+                }
+              },
+              {
+                "table": "`t2`",
+                "table_scan": {
+                  "rows": 10,
+                  "cost": 0.25
+                }
+              }
+            ]
+          },
+          {
+            "considered_execution_plans": [
+              {
+                "plan_prefix": [
+                ],
+                "table": "`t1`",
+                "best_access_path": {
+                  "considered_access_paths": [
+                    {
+                      "rows_to_scan": 5,
+                      "filtering_effect": [
+                      ],
+                      "final_filtering_effect": 1,
+                      "access_type": "scan",
+                      "resulting_rows": 5,
+                      "cost": 0.75,
+                      "chosen": true
+                    }
+                  ]
+                },
+                "condition_filtering_pct": 100,
+                "rows_for_plan": 5,
+                "cost_for_plan": 0.75,
+                "rest_of_plan": [
+                  {
+                    "plan_prefix": [
+                      "`t1`"
+                    ],
+                    "table": "`t2`",
+                    "best_access_path": {
+                      "considered_access_paths": [
+                        {
+                          "access_type": "ref",
+                          "index": "c1",
+                          "rows": 1,
+                          "cost": 1.75,
+                          "chosen": true
+                        },
+                        {
+                          "rows_to_scan": 10,
+                          "filtering_effect": [
+                          ],
+                          "final_filtering_effect": 1,
+                          "access_type": "scan",
+                          "using_join_cache": true,
+                          "buffers_needed": 1,
+                          "resulting_rows": 10,
+                          "cost": 5.25004,
+                          "chosen": false
+                        }
+                      ]
+                    },
+                    "condition_filtering_pct": 100,
+                    "rows_for_plan": 5,
+                    "cost_for_plan": 2.5,
+                    "chosen": true
+                  }
+                ]
+              },
+              {
+                "plan_prefix": [
+                ],
+                "table": "`t2`",
+                "best_access_path": {
+                  "considered_access_paths": [
+                    {
+                      "access_type": "ref",
+                      "index": "c1",
+                      "usable": false,
+                      "chosen": false
+                    },
+                    {
+                      "rows_to_scan": 10,
+                      "filtering_effect": [
+                      ],
+                      "final_filtering_effect": 1,
+                      "access_type": "scan",
+                      "resulting_rows": 10,
+                      "cost": 1.25,
+                      "chosen": true
+                    }
+                  ]
+                },
+                "condition_filtering_pct": 100,
+                "rows_for_plan": 10,
+                "cost_for_plan": 1.25,
+                "pruned_by_heuristic": true
+              }
+            ]
+          },
+          {
+            "attaching_conditions_to_tables": {
+              "original_condition": "(`t2`.`c1` = `t1`.`c2`)",
+              "attached_conditions_computation": [
+              ],
+              "attached_conditions_summary": [
+                {
+                  "table": "`t1`",
+                  "attached": "(`t1`.`c2` is not null)"
+                },
+                {
+                  "table": "`t2`",
+                  "attached": "(`t2`.`c1` = `t1`.`c2`)"
+                }
+              ]
+            }
+          },
+          {
+            "finalizing_table_conditions": [
+              {
+                "table": "`t1`",
+                "original_table_condition": "(`t1`.`c2` is not null)",
+                "final_table_condition   ": "(`t1`.`c2` is not null)"
+              },
+              {
+                "table": "`t2`",
+                "original_table_condition": "(`t2`.`c1` = `t1`.`c2`)",
+                "final_table_condition   ": null
+              }
+            ]
+          },
+          {
+            "refine_plan": [
+              {
+                "table": "`t1`"
+              },
+              {
+                "table": "`t2`"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "join_explain": {
+        "select#": 1,
+        "steps": [
+        ]
+      }
+    }
+  ]
+}
+```
