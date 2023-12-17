@@ -433,3 +433,7 @@ select * from information_schema.OPTIMIZER_TRACE\g;
             }
           },
 ```
+
+## 参考文献
+- [SQL実践入門](https://gihyo.jp/book/2015/978-4-7741-7301-6)
+- [詳解MySQL 5.7 止まらぬ進化に乗り遅れないためのテクニカルガイド](https://www.shoeisha.co.jp/book/detail/9784798147406)
