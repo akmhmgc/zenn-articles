@@ -381,3 +381,31 @@ select * from information_schema.OPTIMIZER_TRACE\g;
   ]
 }
 ```
+
+`attaching_conditions_to_tables`を見ると、オプティマイザが``t1`.`c2` is not null`という条件を追加していることがわかります。
+
+```json
+          {
+            "attaching_conditions_to_tables": {
+              "original_condition": "(`t2`.`c1` = `t1`.`c2`)",
+              "attached_conditions_computation": [
+              ],
+              "attached_conditions_summary": [
+                {
+                  "table": "`t1`",
+                  "attached": "(`t1`.`c2` is not null)"
+                },
+                {
+                  "table": "`t2`",
+                  "attached": "(`t2`.`c1` = `t1`.`c2`)"
+                }
+              ]
+            }
+          },
+```
+
+駆動表のキーとなっている`c1`カラムはNOT NULL制約が付いておらず`NULL`が入る可能性があります。
+しかし、結合条件となっている等価比較に`NULL`が含まれるとTRUEもしくはFALSEを返すことがないため[^1]、`c1`が内部結合の結合キーとなった時点で`c1`に`NULL`が含まれるレコードが結果に含まれることはありません。そのため外部表をフェッチして内部表と結合を行う前に、`c1`に`NULL`が含まれるレコードを取り除いておくとパフォーマンスが上がるとオプティマイザが判断したと考えられます。
+これで実行計画のExtraカラムに`Using where`が追加されている理由がわかりました。
+
+[^1]:https://dev.mysql.com/doc/refman/8.0/ja/working-with-null.html
